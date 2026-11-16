@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Смена Уфа — Быстрая подработка</title>
+    <script src="https://telegram.org"></script>
+    <style>
+        :root {
+            --bg-color: #f4f5f7;
+            --card-bg: #ffffff;
+            --text-main: #1a1a1a;
+            --text-muted: #6e7781;
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --primary: #2563eb;
+            --border: #e5e7eb;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding-bottom: 80px; }
+        
+        /* Шапка */
+        .header { background: var(--card-bg); padding: 16px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); }
+        .header h1 { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+        
+        /* Фильтры по районам */
+        .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+        .filters::-webkit-scrollbar { display: none; }
+        .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: #fff; font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+        .filter-btn.active { background: var(--text-main); color: #fff; border-color: var(--text-main); }
+
+        /* Лента карточек */
+        .container { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border); }
+        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .job-title { font-size: 17px; font-weight: 700; }
+        .price { font-size: 18px; font-weight: 800; color: var(--accent); background: #ecfdf5; padding: 4px 10px; border-radius: 10px; }
+        .info-row { font-size: 14px; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .badge { display: inline-block; font-size: 12px; color: var(--primary); background: #eff6ff; padding: 4px 8px; border-radius: 6px; font-weight: 600; margin-top: 4px; margin-bottom: 12px; }
+        
+        .btn-apply { width: 100%; padding: 12px; border: none; border-radius: 12px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-apply:active { transform: scale(0.98); }
+        .btn-apply.applied { background: var(--accent); }
+
+        /* Форма добавления смены */
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--text-muted); }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border); font-size: 15px; background: #fff; }
+
+        /* Нижняя навигация */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 10px 0; z-index: 20; }
+        .nav-item { border: none; background: none; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .nav-item.active { color: var(--primary); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>⚡ Смена Уфа</h1>
+        <div class="filters" id="filterBar">
+            <button class="filter-btn active" onclick="filterShifts('Все', this)">Все районы</button>
+            <button class="filter-btn" onclick="filterShifts('Центр', this)">Центр</button>
+            <button class="filter-btn" onclick="filterShifts('Проспект', this)">Проспект Октября</button>
+            <button class="filter-btn" onclick="filterShifts('Сипайлово', this)">Сипайлово</button>
+            <button class="filter-btn" onclick="filterShifts('Зеленая Роща', this)">Зеленая Роща</button>
+        </div>
+    </div>
+
+    <!-- Вкладка 1: Лента смен -->
+    <div id="tab-feed" class="container"></div>
+
+    <!-- Вкладка 2: Разместить смену (для работодателя) -->
+    <div id="tab-add" class="container hidden">
+        <div class="card">
+            <h2 style="margin-bottom: 12px; font-size: 18px;">Новая смена</h2>
+            <div class="form-group">
+                <label>Кого ищем?</label>
+                <input type="text" id="inp-title" placeholder="Например: Бариста на замену">
+            </div>
+            <div class="form-group">
+                <label>Оплата за смену (₽)</label>
+                <input type="number" id="inp-price" placeholder="2500">
+            </div>
+            <div class="form-group">
+                <label>Район Уфы</label>
+                <select id="inp-district">
+                    <option value="Центр">Центр</option>
+                    <option value="Проспект">Проспект Октября</option>
+                    <option value="Сипайлово">Сипайлово</option>
+                    <option value="Зеленая Роща">Зеленая Роща</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Точный адрес</label>
+                <input type="text" id="inp-address" placeholder="ул. Ленина, 26">
+            </div>
+            <div class="form-group">
+                <label>Дата и время</label>
+                <input type="text" id="inp-time" placeholder="Завтра, 09:00 – 18:00">
+            </div>
+            <button class="btn-apply" onclick="addNewShift()">Опубликовать смену</button>
+        </div>
+    </div>
+
+    <!-- Нижнее меню -->
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('feed', this)">
+            <span>🔍 Смены</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('add', this)">
+            <span>➕ Разместить</span>
+        </button>
+    </div>
+
+    <script>
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Тестовые смены для Уфы
+        let shifts = [
+            { id: 1, title: "Бариста в кофейню", price: "2 800 ₽", district: "Центр", address: "ул. Верхнеторговая пл., 1", time: "Сегодня, 14:00 – 22:00", applied: false },
+            { id: 2, title: "Сборщик заказов (даркстор)", price: "3 200 ₽", district: "Проспект", address: "пр. Октября, 78", time: "Завтра, 08:00 – 20:00", applied: false },
+            { id: 3, title: "Помощник в пункт выдачи", price: "2 200 ₽", district: "Сипайлово", address: "ул. Маршала Жукова, 10", time: "Завтра, 10:00 – 21:00", applied: false },
+            { id: 4, title: "Курьер на своем авто", price: "4 500 ₽", district: "Зеленая Роща", address: "ул. Менделеева, 137", time: "Завтра, 11:00 – 20:00", applied: false }
+        ];
+
+        let currentFilter = 'Все';
+
+        function renderShifts() {
+            const feed = document.getElementById('tab-feed');
+            feed.innerHTML = '';
+            const filtered = currentFilter === 'Все' ? shifts : shifts.filter(s => s.district === currentFilter);
+
+            filtered.forEach(shift => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-top">
+                        <div class="job-title">${shift.title}</div>
+                        <div class="price">${shift.price}</div>
+                    </div>
+                    <div class="info-row">🕒 ${shift.time}</div>
+                    <div class="info-row">📍 ${shift.district}, ${shift.address}</div>
+                    <div class="badge">✔ Проверенный заказчик • Оплата сразу</div>
+                                        <button class="btn-apply ${shift.applied ? 'applied' : ''}" onclick="applyShift(${shift.id})">
+                        ${shift.applied ? '✅ Вы откликнулись!' : 'Откликнуться в 1 клик'}
+                    </button>
+                `;
+                feed.appendChild(card);
+            });
+        }
+
+        function filterShifts(district, btn) {
+            currentFilter = district;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderShifts();
+        }
+
+        function applyShift(id) {
+            const shift = shifts.find(s => s.id === id);
+            if (shift && !shift.applied) {
+                shift.applied = true;
+                renderShifts();
+                if (tg && tg.showAlert) {
+                    tg.showAlert('Ваш отклик отправлен работодателю!');
+                } else {
+                    alert('Отклик отправлен! Работодатель получил ваш контакт.');
+                }
+            }
+        }
+
+        function addNewShift() {
+            const title = document.getElementById('inp-title').value;
+            const price = document.getElementById('inp-price').value;
+            const district = document.getElementById('inp-district').value;
+            const address = document.getElementById('inp-address').value;
+            const time = document.getElementById('inp-time').value;
+
+            if (!title || !price || !address || !time) {
+                alert('Заполните все поля!');
+                return;
+            }
+
+            shifts.unshift({
+                id: Date.now(),
+                title: title,
+                price: price + ' ₽',
+                district: district,
+                address: address,
+                time: time,
+                applied: false
+            });
+
+            document.getElementById('inp-title').value = '';
+            document.getElementById('inp-price').value = '';
+            document.getElementById('inp-address').value = '';
+            document.getElementById('inp-time').value = '';
+
+            switchTab('feed', document.querySelectorAll('.nav-item')[0]);
+            renderShifts();
+        }
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (tab === 'feed') {
+                document.getElementById('tab-feed').classList.remove('hidden');
+                document.getElementById('tab-add').classList.add('hidden');
+            } else {
+                document.getElementById('tab-feed').classList.add('hidden');
+                document.getElementById('tab-add').classList.remove('hidden');
+            }
+        }
+
+        renderShifts();
+    </script>
+</body>
+</html>
