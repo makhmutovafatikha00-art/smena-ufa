@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Смена Уфа — Быстрая подработка</title>
     <script src="https://telegram.org"></script>
+    <script src="https://jsdelivr.net"></script>
     <style>
         :root {
             --bg-color: #f4f5f7;
@@ -12,12 +13,11 @@
             --text-main: #1a1a1a;
             --text-muted: #6e7781;
             --accent: #10b981;
-            --accent-hover: #059669;
             --primary: #2563eb;
             --border: #e5e7eb;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding-bottom: 80px; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding-bottom: 85px; }
         
         /* Шапка */
         .header { background: var(--card-bg); padding: 16px; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border); }
@@ -32,15 +32,16 @@
         /* Лента карточек */
         .container { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
         .card { background: var(--card-bg); border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border); }
-        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
         .job-title { font-size: 17px; font-weight: 700; }
-        .price { font-size: 18px; font-weight: 800; color: var(--accent); background: #ecfdf5; padding: 4px 10px; border-radius: 10px; }
+        .price { font-size: 17px; font-weight: 800; color: var(--accent); background: #ecfdf5; padding: 4px 10px; border-radius: 10px; white-space: nowrap; }
         .info-row { font-size: 14px; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
         .badge { display: inline-block; font-size: 12px; color: var(--primary); background: #eff6ff; padding: 4px 8px; border-radius: 6px; font-weight: 600; margin-top: 4px; margin-bottom: 12px; }
         
         .btn-apply { width: 100%; padding: 12px; border: none; border-radius: 12px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; }
         .btn-apply:active { transform: scale(0.98); }
         .btn-apply.applied { background: var(--accent); }
+        .btn-apply:disabled { opacity: 0.6; }
 
         /* Форма добавления смены */
         .form-group { margin-bottom: 12px; }
@@ -52,6 +53,7 @@
         .nav-item { border: none; background: none; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .nav-item.active { color: var(--primary); }
         .hidden { display: none; }
+        .loader { text-align: center; color: var(--text-muted); padding: 30px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -59,16 +61,23 @@
     <div class="header">
         <h1>⚡ Смена Уфа</h1>
         <div class="filters" id="filterBar">
-            <button class="filter-btn active" onclick="filterShifts('Все', this)">Все районы</button>
+            <button class="filter-btn active"
+onclick="filterShifts('Все', this)">Все районы</button>
+            <button class="filter-btn" onclick="filterShifts('Затон', this)">Затон</button>
             <button class="filter-btn" onclick="filterShifts('Центр', this)">Центр</button>
             <button class="filter-btn" onclick="filterShifts('Проспект', this)">Проспект Октября</button>
             <button class="filter-btn" onclick="filterShifts('Сипайлово', this)">Сипайлово</button>
             <button class="filter-btn" onclick="filterShifts('Зеленая Роща', this)">Зеленая Роща</button>
+            <button class="filter-btn" onclick="filterShifts('Черниковка', this)">Черниковка</button>
+            <button class="filter-btn" onclick="filterShifts('Дёма', this)">Дёма</button>
+            <button class="filter-btn" onclick="filterShifts('Инорс', this)">Инорс</button>
         </div>
     </div>
 
     <!-- Вкладка 1: Лента смен -->
-    <div id="tab-feed" class="container"></div>
+    <div id="tab-feed" class="container">
+        <div class="loader">Загрузка актуальных смен...</div>
+    </div>
 
     <!-- Вкладка 2: Разместить смену (для работодателя) -->
     <div id="tab-add" class="container hidden">
@@ -85,55 +94,82 @@
             <div class="form-group">
                 <label>Район Уфы</label>
                 <select id="inp-district">
+                    <option value="Затон">Затон</option>
                     <option value="Центр">Центр</option>
                     <option value="Проспект">Проспект Октября</option>
                     <option value="Сипайлово">Сипайлово</option>
                     <option value="Зеленая Роща">Зеленая Роща</option>
+                    <option value="Черниковка">Черниковка</option>
+                    <option value="Дёма">Дёма</option>
+                    <option value="Инорс">Инорс</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>Точный адрес</label>
-                <input type="text" id="inp-address" placeholder="ул. Ленина, 26">
+                <label>Точный адрес и контакт для связи</label>
+                <input type="text" id="inp-address" placeholder="ул. Ахметова, 300 (тел. +7 999...)">
             </div>
             <div class="form-group">
                 <label>Дата и время</label>
                 <input type="text" id="inp-time" placeholder="Завтра, 09:00 – 18:00">
             </div>
-            <button class="btn-apply" onclick="addNewShift()">Опубликовать смену</button>
+            <button class="btn-apply" id="btn-submit" onclick="addNewShift()">Опубликовать смену</button>
         </div>
     </div>
 
     <!-- Нижнее меню -->
     <div class="bottom-nav">
-        <button class="nav-item active" onclick="switchTab('feed', this)">
+        <button class="nav-item active" id="nav-feed" onclick="switchTab('feed', this)">
             <span>🔍 Смены</span>
         </button>
-        <button class="nav-item" onclick="switchTab('add', this)">
+        <button class="nav-item" id="nav-add" onclick="switchTab('add', this)">
             <span>➕ Разместить</span>
         </button>
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Тестовые смены для Уфы
-        let shifts = [
-            { id: 1, title: "Бариста в кофейню", price: "2 800 ₽", district: "Центр", address: "ул. Верхнеторговая пл., 1", time: "Сегодня, 14:00 – 22:00", applied: false },
-            { id: 2, title: "Сборщик заказов (даркстор)", price: "3 200 ₽", district: "Проспект", address: "пр. Октября, 78", time: "Завтра, 08:00 – 20:00", applied: false },
-            { id: 3, title: "Помощник в пункт выдачи", price: "2 200 ₽", district: "Сипайлово", address: "ул. Маршала Жукова, 10", time: "Завтра, 10:00 – 21:00", applied: false },
-            { id: 4, title: "Курьер на своем авто", price: "4 500 ₽", district: "Зеленая Роща", address: "ул. Менделеева, 137", time: "Завтра, 11:00 – 20:00", applied: false }
-        ];
+        // Подключение к вашей облачной базе Supabase
+        const SUPABASE_URL = 'https://mquukoutlloomfovbish.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_zP_CsdyApV2Cotw_BVl3lQ_-EBTfX1Y';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        let shifts = [];
+        let appliedIds = JSON.parse(localStorage.getItem('appliedShifts') || '[]');
         let currentFilter = 'Все';
+
+        // Загрузка смен из облачной базы
+        async function loadShifts() {
+            const feed = document.getElementById('tab-feed');
+            const { data, error } = await db
+                .from('shifts')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                feed.innerHTML = '<div class="loader">Ошибка загрузки базы. Проверьте таблицу shifts в Supabase.</div>';
+                console.error(error);
+                return;
+            }
+
+            shifts = data || [];
+            renderShifts();
+        }
 
         function renderShifts() {
             const feed = document.getElementById('tab-feed');
             feed.innerHTML = '';
             const filtered = currentFilter === 'Все' ? shifts : shifts.filter(s => s.district === currentFilter);
 
+            if (filtered.length === 0) {
+                feed.innerHTML = '<div class="loader">В этом районе пока нет открытых смен.
+Нажмите «➕ Разместить», чтобы добавить первую!</div>';
+                return;
+            }
+
             filtered.forEach(shift => {
+                const isApplied = appliedIds.includes(shift.id);
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
@@ -144,8 +180,8 @@
                     <div class="info-row">🕒 ${shift.time}</div>
                     <div class="info-row">📍 ${shift.district}, ${shift.address}</div>
                     <div class="badge">✔ Проверенный заказчик • Оплата сразу</div>
-                                        <button class="btn-apply ${shift.applied ? 'applied' : ''}" onclick="applyShift(${shift.id})">
-                        ${shift.applied ? '✅ Вы откликнулись!' : 'Откликнуться в 1 клик'}
+                    <button class="btn-apply ${isApplied ? 'applied' : ''}" onclick="applyShift(${shift.id})">
+                        ${isApplied ? '✅ Вы откликнулись! Свяжитесь по контакту выше' : 'Откликнуться в 1 клик'}
                     </button>
                 `;
                 feed.appendChild(card);
@@ -154,68 +190,70 @@
 
         function filterShifts(district, btn) {
             currentFilter = district;
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            renderShifts();
-        }
-
-        function applyShift(id) {
-            const shift = shifts.find(s => s.id === id);
-            if (shift && !shift.applied) {
-                shift.applied = true;
-                renderShifts();
-                if (tg && tg.showAlert) {
-                    tg.showAlert('Ваш отклик отправлен работодателю!');
-                } else {
-                    alert('Отклик отправлен! Работодатель получил ваш контакт.');
-                }
-            }
-        }
-
-        function addNewShift() {
-            const title = document.getElementById('inp-title').value;
-            const price = document.getElementById('inp-price').value;
-            const district = document.getElementById('inp-district').value;
-            const address = document.getElementById('inp-address').value;
-            const time = document.getElementById('inp-time').value;
-
-            if (!title || !price || !address || !time) {
-                alert('Заполните все поля!');
-                return;
-            }
-
-            shifts.unshift({
-                id: Date.now(),
-                title: title,
-                price: price + ' ₽',
-                district: district,
-                address: address,
-                time: time,
-                applied: false
-            });
-
-            document.getElementById('inp-title').value = '';
-            document.getElementById('inp-price').value = '';
-            document.getElementById('inp-address').value = '';
-            document.getElementById('inp-time').value = '';
-
-            switchTab('feed', document.querySelectorAll('.nav-item')[0]);
-            renderShifts();
-        }
-
-        function switchTab(tab, btn) {
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            if (tab === 'feed') {
-                document.getElementById('tab-feed').classList.remove('hidden');
-                document.getElementById('tab-add').classList.add('hidden');
-            } else {
-                document.getElementById('tab-feed').classList.add('hidden');
-                document.getElementById('tab-add').classList.remove('hidden');
-            }
-        }
-
-        renderShifts();
+document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+btn.classList.add('active');
+renderShifts();
+}
+function applyShift(id) {
+if (!appliedIds.includes(id)) {
+appliedIds.push(id);
+localStorage.setItem('appliedShifts', JSON.stringify(appliedIds));
+renderShifts();
+if (tg && tg.showAlert) {
+tg.showAlert('Вы откликнулись на смену! Контакты для связи указаны в адресе карточки.');
+} else {
+alert('Вы откликнулись на смену!');
+}
+}
+}
+// Сохранение новой смены в облачную базу Supabase
+async function addNewShift() {
+const title = document.getElementById('inp-title').value.trim();
+const price = document.getElementById('inp-price').value.trim();
+const district = document.getElementById('inp-district').value;
+const address = document.getElementById('inp-address').value.trim();
+const time = document.getElementById('inp-time').value.trim();
+const btn = document.getElementById('btn-submit');
+if (!title || !price || !address || !time) {
+alert('Заполните все поля!');
+return;
+}
+btn.disabled = true;
+btn.innerText = 'Публикация...';
+const { error } = await db
+.from('shifts')
+.insert([{
+title: title,
+price: price + ' ₽',
+district: district,
+address: address,
+time: time
+}]);
+btn.disabled = false;
+btn.innerText = 'Опубликовать смену';
+if (error) {
+alert('Ошибка при сохранении: ' + error.message);
+return;
+}
+document.getElementById('inp-title').value = '';
+document.getElementById('inp-price').value = '';
+document.getElementById('inp-address').value = '';
+document.getElementById('inp-time').value = '';
+switchTab('feed', document.getElementById('nav-feed'));
+loadShifts();
+}
+function switchTab(tab, btn) {
+document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+btn.classList.add('active');
+if (tab === 'feed') {
+document.getElementById('tab-feed').classList.remove('hidden');
+document.getElementById('tab-add').classList.add('hidden');
+} else {
+document.getElementById('tab-feed').classList.add('hidden');
+document.getElementById('tab-add').classList.remove('hidden');
+}
+}
+loadShifts();
     </script>
 </body>
 </html>
