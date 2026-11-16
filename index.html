@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Смена Уфа — Быстрая подработка</title>
-    <script src="https://telegram.org"></script>
-    <script src="https://jsdelivr.net"></script>
+        <script src="https://telegram.org"></script>
+        <script src="https://jsdelivr.net"></script>
     <style>
         :root {
             --bg-color: #f4f5f7;
@@ -163,8 +163,7 @@ onclick="filterShifts('Все', this)">Все районы</button>
             const filtered = currentFilter === 'Все' ? shifts : shifts.filter(s => s.district === currentFilter);
 
             if (filtered.length === 0) {
-                feed.innerHTML = '<div class="loader">В этом районе пока нет открытых смен.
-Нажмите «➕ Разместить», чтобы добавить первую!</div>';
+                feed.innerHTML = '<div class="loader">В этом районе пока нет открытых смен.Нажмите «➕ Разместить», чтобы добавить первую!</div>';
                 return;
             }
 
