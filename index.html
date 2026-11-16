@@ -126,35 +126,45 @@ onclick="filterShifts('Все', this)">Все районы</button>
         </button>
     </div>
 
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+      <script>
+        const tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (tg) tg.expand();
 
-        // Подключение к вашей облачной базе Supabase
-        const SUPABASE_URL = 'https://mquukoutlloomfovbish.supabase.co';
+        const SUPABASE_URL = 'https://supabase.co';
         const SUPABASE_KEY = 'sb_publishable_zP_CsdyApV2Cotw_BVl3lQ_-EBTfX1Y';
-        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let db = null;
+        if (window.supabase) {
+            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
 
         let shifts = [];
         let appliedIds = JSON.parse(localStorage.getItem('appliedShifts') || '[]');
         let currentFilter = 'Все';
 
-        // Загрузка смен из облачной базы
         async function loadShifts() {
             const feed = document.getElementById('tab-feed');
-            const { data, error } = await db
-                .from('shifts')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                feed.innerHTML = '<div class="loader">Ошибка загрузки базы. Проверьте таблицу shifts в Supabase.</div>';
-                console.error(error);
+            if (!db) {
+                feed.innerHTML = '<div class="loader">Ошибка: библиотека базы данных не загрузилась. Проверьте 7-ю строку кода.</div>';
                 return;
             }
 
-            shifts = data || [];
-            renderShifts();
+            try {
+                const { data, error } = await db
+                    .from('shifts')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    feed.innerHTML = '<div class="loader">Ошибка базы: ' + error.message + '</div>';
+                    return;
+                }
+
+                shifts = data || [];
+                renderShifts();
+            } catch (e) {
+                feed.innerHTML = '<div class="loader">Сбой сети: ' + e.message + '</div>';
+            }
         }
 
         function renderShifts() {
@@ -189,70 +199,87 @@ onclick="filterShifts('Все', this)">Все районы</button>
 
         function filterShifts(district, btn) {
             currentFilter = district;
-document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-btn.classList.add('active');
-renderShifts();
-}
-function applyShift(id) {
-if (!appliedIds.includes(id)) {
-appliedIds.push(id);
-localStorage.setItem('appliedShifts', JSON.stringify(appliedIds));
-renderShifts();
-if (tg && tg.showAlert) {
-tg.showAlert('Вы откликнулись на смену! Контакты для связи указаны в адресе карточки.');
-} else {
-alert('Вы откликнулись на смену!');
-}
-}
-}
-// Сохранение новой смены в облачную базу Supabase
-async function addNewShift() {
-const title = document.getElementById('inp-title').value.trim();
-const price = document.getElementById('inp-price').value.trim();
-const district = document.getElementById('inp-district').value;
-const address = document.getElementById('inp-address').value.trim();
-const time = document.getElementById('inp-time').value.trim();
-const btn = document.getElementById('btn-submit');
-if (!title || !price || !address || !time) {
-alert('Заполните все поля!');
-return;
-}
-btn.disabled = true;
-btn.innerText = 'Публикация...';
-const { error } = await db
-.from('shifts')
-.insert([{
-title: title,
-price: price + ' ₽',
-district: district,
-address: address,
-time: time
-}]);
-btn.disabled = false;
-btn.innerText = 'Опубликовать смену';
-if (error) {
-alert('Ошибка при сохранении: ' + error.message);
-return;
-}
-document.getElementById('inp-title').value = '';
-document.getElementById('inp-price').value = '';
-document.getElementById('inp-address').value = '';
-document.getElementById('inp-time').value = '';
-switchTab('feed', document.getElementById('nav-feed'));
-loadShifts();
-}
-function switchTab(tab, btn) {
-document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-btn.classList.add('active');
-if (tab === 'feed') {
-document.getElementById('tab-feed').classList.remove('hidden');
-document.getElementById('tab-add').classList.add('hidden');
-} else {
-document.getElementById('tab-feed').classList.add('hidden');
-document.getElementById('tab-add').classList.remove('hidden');
-}
-}
-loadShifts();
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderShifts();
+        }
+
+        function applyShift(id) {
+            if (!appliedIds.includes(id)) {
+                appliedIds.push(id);
+                localStorage.setItem('appliedShifts', JSON.stringify(appliedIds));
+                renderShifts();
+                if (tg && tg.showAlert) {
+                    tg.showAlert('Вы откликнулись на смену! Контакты для связи указаны в адресе карточки.');
+                } else {
+                    alert('Вы откликнулись на смену!');
+                }
+            }
+        }
+
+        async function addNewShift() {
+            if (!db) {
+                alert('База данных не подключена! Проверьте 7-ю строку index.html на GitHub.');
+                return;
+            }
+
+            const title = document.getElementById('inp-title').value.trim();
+            const price = document.getElementById('inp-price').value.trim();
+            const district = document.getElementById('inp-district').value;
+            const address = document.getElementById('inp-address').value.trim();
+            const time = document.getElementById('inp-time').value.trim();
+            const btn = document.getElementById('btn-submit');
+
+            if (!title || !price || !address || !time) {
+                alert('Заполните все поля!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Публикация...';
+
+            try {
+                const { error } = await db
+                    .from('shifts')
+                    .insert([{
+                        title: title,
+                        price: price + ' ₽',
+                        district: district,
+                        address: address,
+                        time: time
+                    }]);
+
+                if (error) {
+                    alert('Ошибка Supabase: ' + error.message);
+                } else {
+                    document.getElementById('inp-title').value = '';
+                    document.getElementById('inp-price').value = '';
+                    document.getElementById('inp-address').value = '';
+                    document.getElementById('inp-time').value = '';
+                    switchTab('feed', document.getElementById('nav-feed'));
+                    await loadShifts();
+                }
+            } catch (e) {
+                alert('Ошибка отправки: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Опубликовать смену';
+            }
+        }
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (tab === 'feed') {
+                document.getElementById('tab-feed').classList.remove('hidden');
+                document.getElementById('tab-add').classList.add('hidden');
+            } else {
+                document.getElementById('tab-feed').classList.add('hidden');
+                document.getElementById('tab-add').classList.remove('hidden');
+            }
+        }
+
+        loadShifts();
     </script>
 </body>
 </html>
