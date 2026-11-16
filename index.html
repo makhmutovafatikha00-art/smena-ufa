@@ -163,7 +163,7 @@ onclick="filterShifts('Все', this)">Все районы</button>
             const filtered = currentFilter === 'Все' ? shifts : shifts.filter(s => s.district === currentFilter);
 
             if (filtered.length === 0) {
-                feed.innerHTML = '<div class="loader">В этом районе пока нет открытых смен.Нажмите «➕ Разместить», чтобы добавить первую!</div>';
+                feed.innerHTML = '<div class="loader">В этом районе пока нет открытых смен.<br>Нажмите «➕ Разместить», чтобы добавить первую!</div>';
                 return;
             }
 
